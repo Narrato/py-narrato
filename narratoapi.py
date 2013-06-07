@@ -176,7 +176,7 @@ class Client(object):
     LOG = logging.getLogger('narratoapi.Client')
 
     def __init__(self, client_id, client_secret,
-            server_name='www.narrato.co:5000', ssl=True, access_token=None,
+            server_name='www.narrato.co', ssl=True, access_token=None,
             password_grant_secret=None):
         self.client_id = client_id
         self.client_secret = client_secret

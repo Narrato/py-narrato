@@ -2,3 +2,5 @@ This is (presently) an ultra-basic Python client library for the Narrato API.
 
     https://www.narrato.co/
 
+Please try 'pydoc narratoapi' in the project directory until we have some
+proper documentation.
