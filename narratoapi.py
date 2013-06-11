@@ -278,10 +278,6 @@ class Client(object):
         req.set_data(form or {}, as_json=as_json)
         return self._request(req)
 
-    def list_labels(self):
-        url = self._url('labels/all')
-        return self._get(url)
-
     def get_stats(self, label, include_deleted=False):
         url = self._url('labels/%s/stats' % (obj_uuid(label),),
                             include_deleted=include_deleted)
@@ -291,29 +287,29 @@ class Client(object):
         url = self._url('items/%s' % (obj_uuid(item),))
         return self._json_resp(self._get(url))['item']
 
-    def get_items(self, label, include_deleted=False, ann_key=None,
-            obj_type=None, before_date=None, on_date=None, after_date=None,
-            inclusive=False):
+    def get_label_items(self, label, include_deleted=False, ann_key=None,
+                        obj_type=None, before_date=None, on_date=None,
+                        after_date=None, inclusive=False):
         url = self._url('labels/%s/items' % (obj_uuid(label),),
-                            include_deleted=include_deleted,
-                            ann_key=ann_key,
-                            obj_type=obj_type,
-                            before_date=before_date,
-                            after_date=after_date,
-                            on_date=on_date,
-                            inclusive=inclusive)
+                        include_deleted=include_deleted,
+                        ann_key=ann_key,
+                        obj_type=obj_type,
+                        before_date=before_date,
+                        after_date=after_date,
+                        on_date=on_date,
+                        inclusive=inclusive)
         return self._json_resp(self._get(url))['items']
 
-    def get_all_items(self, include_deleted=False, ann_key=None, obj_type=None,
-            before_date=None, on_date=None, after_date=None, inclusive=False):
-        url = self._url('items/all',
-                            include_deleted=include_deleted,
-                            ann_key=ann_key,
-                            obj_type=obj_type,
-                            before_date=before_date,
-                            after_date=after_date,
-                            on_date=on_date,
-                            inclusive=inclusive)
+    def get_items(self, include_deleted=False, ann_key=None, obj_type=None,
+                  before_date=None, on_date=None, after_date=None, inclusive=False):
+        url = self._url('items',
+                        include_deleted=include_deleted,
+                        ann_key=ann_key,
+                        obj_type=obj_type,
+                        before_date=before_date,
+                        after_date=after_date,
+                        on_date=on_date,
+                        inclusive=inclusive)
         return self._json_resp(self._get(url))['items']
 
     def _item_from_kwargs(self, item=None, annotations=None, labels=None,
@@ -451,10 +447,6 @@ class Client(object):
 
     def get_labels(self):
         url = self._url('labels/')
-        return self._json_resp(self._get(url))['labels']
-
-    def get_all_labels(self):
-        url = self._url('labels/all')
         return self._json_resp(self._get(url))['labels']
 
     def get_label(self, label):
