@@ -482,3 +482,10 @@ class Client(object):
         url = self._url('items/deleted',
             days=days, since_version=since_version)
         return self._json_resp(self._get(url))['deletedids']
+
+    def csv_export(self, cols=None, include_deleted=False):
+        if isinstance(cols, list):
+            cols = ','.join(cols)
+        url = self._url('items/csv', cols=cols, include_deleted=False)
+        return self._json_resp(self._get(url))['csv']
+
