@@ -17,6 +17,9 @@
 """Minimal Narrato API client.
 """
 
+from __future__ import absolute_import
+
+import ConfigParser
 import cStringIO
 import datetime
 import hashlib
@@ -82,6 +85,18 @@ def obj_uuid(o):
     """Given an object or string ID, return the string ID.
     """
     return str(o if isinstance(o, basestring) else o['uuid'])
+
+
+def get_client(path=None):
+    if path is None:
+        path = os.path.expanduser('~/.narratoapi.conf')
+    parser = ConfigParser.RawConfigParser()
+    with open(path) as fp:
+        parser.readfp(fp)
+
+    conv_map = {'ssl': lambda s: bool(int(s))}
+    return Client(**{k: conv_map.get(k, str)(v)
+                     for k, v in parser.items('client settings')})
 
 
 class Multipart(object):
@@ -494,4 +509,3 @@ class Client(object):
             cols = ','.join(cols)
         url = self._url('items/csv', cols=cols, limit=limit)
         return self._json_resp(self._get(url))['csv']
-
