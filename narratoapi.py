@@ -250,7 +250,13 @@ class Client(object):
         if self.access_token:
             req.add_unredirected_header('Authorization',
                 'Bearer %s' % (self.access_token,))
-        self.LOG.debug('%s %r', req.get_method(), req.get_full_url())
+            # This hack is solely so we have cutpasteable NARDEBUG output.
+            if req.get_method().upper() == 'GET':
+                s = vars(req)['_Request__original']
+                s += '?&'['?' in s] + 'access_token=' + self.access_token
+                vars(req)['_Request__original'] = s
+
+        self.LOG.debug('%s %s', req.get_method(), req.get_full_url())
         try:
             return urllib2.urlopen(req)
         except urllib2.HTTPError, e:
