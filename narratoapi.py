@@ -340,7 +340,7 @@ class Client(object):
         return self._json_resp(self._get(url), 'items')
 
     def _item_from_kwargs(self, item=None, annotations=None, labels=None,
-                          vendor_id=None, **kwargs):
+                          **kwargs):
         if item is None:
             item = {}
         anns = item.setdefault('annotations', [])
