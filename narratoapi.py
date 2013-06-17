@@ -95,8 +95,11 @@ def get_client(path=None):
         parser.readfp(fp)
 
     conv_map = {'ssl': lambda s: bool(int(s))}
-    return Client(**{k: conv_map.get(k, str)(v)
-                     for k, v in parser.items('client settings')})
+    client = Client(**{k: conv_map.get(k, str)(v)
+                       for k, v in parser.items('client settings')})
+    if len(logging.getLogger().handlers) == 0:
+        logging.basicConfig(level=logging.DEBUG)
+    return client
 
 
 class Multipart(object):
@@ -229,14 +232,17 @@ class Client(object):
             url += urllib.urlencode({key: value})
         return url
 
-    def _json_resp(self, resp):
+    def _json_resp(self, resp, key=None):
         if resp.headers['Content-type'] != JSON_CTYPE:
             raise ApiError(resp.read(), resp.code, meta=None)
         js = json.loads(resp.read(), object_pairs_hook=Bag)
         meta = js.get('meta', {})
+        if meta.get('code') == 404:
+            self.LOG.debug('Converting 404 response to None return value')
+            return None
         if not (200 <= meta.get('code', 200) < 300):
             raise ApiError('%(code)s: %(error)s' % meta, meta['code'], meta)
-        return js
+        return js[key] if key else js
 
     def oauth_login(self, redirect_uri):
         return self._url('/oauth/authenticate', **{
@@ -302,11 +308,11 @@ class Client(object):
     def get_stats(self, label, include_deleted=False):
         url = self._url('labels/%s/stats' % (obj_uuid(label),),
                             include_deleted=include_deleted)
-        return self._json_resp(self._get(url)).stats
+        return self._json_resp(self._get(url), 'stats')
 
     def get_item(self, item):
         url = self._url('items/%s' % (obj_uuid(item),))
-        return self._json_resp(self._get(url))['item']
+        return self._json_resp(self._get(url), 'item')
 
     def get_label_items(self, label, include_deleted=False, ann_key=None,
                         obj_type=None, before_date=None, on_date=None,
@@ -319,7 +325,7 @@ class Client(object):
                         after_date=after_date,
                         on_date=on_date,
                         inclusive=inclusive)
-        return self._json_resp(self._get(url))['items']
+        return self._json_resp(self._get(url), 'items')
 
     def get_items(self, include_deleted=False, ann_key=None, obj_type=None,
                   before_date=None, on_date=None, after_date=None, inclusive=False):
@@ -331,10 +337,10 @@ class Client(object):
                         after_date=after_date,
                         on_date=on_date,
                         inclusive=inclusive)
-        return self._json_resp(self._get(url))['items']
+        return self._json_resp(self._get(url), 'items')
 
     def _item_from_kwargs(self, item=None, annotations=None, labels=None,
-            **kwargs):
+                          vendor_id=None, **kwargs):
         if item is None:
             item = {}
         anns = item.setdefault('annotations', [])
@@ -343,7 +349,7 @@ class Client(object):
         uuids = item.setdefault('label_uuids', [])
         for label in labels or ():
             uuids.append(obj_uuid(label))
-        for fld in 'type', 'created', 'uuid', 'collection_uuid':
+        for fld in 'vendor_id', 'type', 'created', 'uuid', 'collection_uuid':
             if fld in kwargs:
                 item[fld] = kwargs[fld]
         return item
@@ -353,15 +359,15 @@ class Client(object):
         item = self._item_from_kwargs(**kwargs)
         self.LOG.debug('Adding item %r', item)
         resp = self._post(url, item, as_json=True)
-        return self._json_resp(resp).item
+        return self._json_resp(resp, 'item')
 
     def update_item(self, item):
         url = self._url('items/%s' % (obj_uuid(item),))
-        return self._json_resp(self._patch(url, item, as_json=True)).item
+        return self._json_resp(self._patch(url, item, as_json=True), 'item')
 
     def delete_item(self, item):
         url = self._url('items/%s' % (obj_uuid(item),))
-        return self._json_resp(self._delete(url))['item']
+        return self._json_resp(self._delete(url), 'item')
 
     def add_file(self, filename, filetype, content=None, public=False,
                     uuid=None):
@@ -380,7 +386,7 @@ class Client(object):
         req = NiceRequest('POST', self._url('files'))
         req.add_unredirected_header('Content-type', mpt.content_type)
         req.add_data(mpt.finalize())
-        return self._json_resp(self._request(req)).file
+        return self._json_resp(self._request(req), 'file')
 
     def _put(self, url, data, headers=None):
         req = urllib2.Request(url, data)
@@ -400,7 +406,7 @@ class Client(object):
 
     def get_file_metadata(self, nfile):
         resp = self._get(self._url('files/%s' % (obj_uuid(nfile),)))
-        return self._json_resp(resp)['file']
+        return self._json_resp(resp, 'file')
 
     def set_file_content(self, nfile, data):
         """Replace a file's contents with `data`, which may be bytes or a
@@ -414,7 +420,7 @@ class Client(object):
         resp = self._put(self._file_data_url(nfile), data, {
             'Content-type': 'text/silly'
         })
-        return self._json_resp(resp)['file']
+        return self._json_resp(resp, 'file')
 
     def get_file_content(self, nfile):
         """Return a file-like object representing the file's content."""
@@ -423,23 +429,23 @@ class Client(object):
     def delete_file(self, nfile):
         url = self._url('files/%s' % (obj_uuid(nfile),))
         resp = self._delete(url)
-        return self._json_resp(resp)['file']
+        return self._json_resp(resp, 'file')
 
     def get_appdata(self):
         resp = self._get(self._url('users/me/appdata'))
-        return self._json_resp(resp)['appdata']
+        return self._json_resp(resp, 'appdata')
 
     def set_appdata(self, data):
         resp = self._put_json(self._url('users/me/appdata'), data)
-        return self._json_resp(resp)['appdata']
+        return self._json_resp(resp, 'appdata')
 
     def get_user(self, username='me'):
         resp = self._get(self._url('users/%s' % (username,)))
-        return self._json_resp(resp)['user']
+        return self._json_resp(resp, 'user')
 
     def delete_appdata(self):
         self._delete(self._url('users/me/appdata'))
-        return self._json_resp(resp)
+        return self._json_resp(resp, 'appdata')
 
     def create_user(self, username, email, password):
         url = self._url('/oauth/createuser')
@@ -453,7 +459,7 @@ class Client(object):
 
     def search_users(self, q):
         url = self._url('users/search', q=q)
-        return self._json_resp(self._get(url))['users']
+        return self._json_resp(self._get(url), 'users')
 
     def _label_from_kwargs(self, label=None, annotations=None, **kwargs):
         if label is None:
@@ -468,44 +474,44 @@ class Client(object):
 
     def get_labels(self):
         url = self._url('labels/')
-        return self._json_resp(self._get(url))['labels']
+        return self._json_resp(self._get(url), 'labels')
 
     def get_label(self, label):
         url = self._url('labels/%s' % (obj_uuid(label),))
-        return self._json_resp(self._get(url))['label']
+        return self._json_resp(self._get(url), 'label')
 
     def get_label_stats(self, label):
         url = self._url('labels/%s/stats' % (obj_uuid(label),))
-        return self._json_resp(self._get(url))['stats']
+        return self._json_resp(self._get(url), 'stats')
 
     def update_label(self, label):
         url = self._url('labels/%s' % (obj_uuid(label),))
-        return self._json_resp(self._patch(url, label, as_json=True))['label']
+        return self._json_resp(self._patch(url, label, as_json=True), 'label')
 
     def add_label(self, **kwargs):
         url = self._url('labels/')
         label = self._label_from_kwargs(**kwargs)
         self.LOG.debug('Adding label %r', label)
         resp = self._post(url, label, as_json=True)
-        return self._json_resp(resp)['label']
+        return self._json_resp(resp, 'label')
 
     def get_label_items(self, label, include_deleted=False):
         url = self._url('labels/%s/items' % (obj_uuid(label),),
                             include_deleted=include_deleted)
-        return self._json_resp(self._get(url))['items']
+        return self._json_resp(self._get(url), 'items')
 
     def unlabel_item(self, label, item):
         url = self._url('labels/%s/items/%s' %\
             (obj_uuid(label), obj_uuid(item)))
-        return self._json_resp(self._delete(url))['item']
+        return self._json_resp(self._delete(url), 'item')
 
     def deleted_item_ids(self, days=None, since_version=None):
         url = self._url('items/deleted',
             days=days, since_version=since_version)
-        return self._json_resp(self._get(url))['deletedids']
+        return self._json_resp(self._get(url), 'deletedids')
 
     def csv_export(self, cols=None, limit=None):
         if isinstance(cols, list):
             cols = ','.join(cols)
         url = self._url('items/csv', cols=cols, limit=limit)
-        return self._json_resp(self._get(url))['csv']
+        return self._json_resp(self._get(url), 'csv')
