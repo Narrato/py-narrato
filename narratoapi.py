@@ -349,7 +349,7 @@ class Client(object):
         uuids = item.setdefault('label_uuids', [])
         for label in labels or ():
             uuids.append(obj_uuid(label))
-        for fld in 'vendor_id', 'type', 'created', 'uuid', 'collection_uuid':
+        for fld in 'public', 'vendor_id', 'type', 'created', 'uuid', 'collection_uuid':
             if fld in kwargs:
                 item[fld] = kwargs[fld]
         return item
