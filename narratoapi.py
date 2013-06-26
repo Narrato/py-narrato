@@ -199,24 +199,17 @@ class Client(object):
 
             After login, the access token may be persisted by reading the
             :py:attr:access_token attribute.
-
-        `password_grant_secret`:
-            If your application is authorized for password authentication, this
-            is the password grant secret available from
-            https://www.narrato.co/account/apps/
     """
     LOG = logging.getLogger('narratoapi.Client')
 
     def __init__(self, client_id, client_secret,
-            server_name='www.narrato.co', ssl=True, access_token=None,
-            password_grant_secret=None):
+            server_name='www.narrato.co', ssl=True, access_token=None):
         self.client_id = client_id
         self.client_secret = client_secret
         self.server_name = server_name
         self.ssl = ssl
         #: The user's access token, or ``None`` to indicate no session.
         self.access_token = access_token
-        self.password_grant_secret = password_grant_secret
 
         self.scheme = 'https' if ssl else 'http'
         self.base_url = '%s://%s/api/v1/' % (self.scheme, server_name)
@@ -254,14 +247,12 @@ class Client(object):
 
     def direct_login(self, username, password, scope='all'):
         """Acquire a client token using OAuth login flow."""
-        assert self.password_grant_secret is not None
         url = self._url('/oauth/access_token')
         js = self._json_resp(self._post(url, form={
             'grant_type': 'password',
             'username': username,
             'password': password,
             'client_id': self.client_id,
-            'password_grant_secret': self.password_grant_secret,
             'scope': scope
         }, as_json=False))
         self.access_token = js['access_token']
