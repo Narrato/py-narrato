@@ -515,3 +515,11 @@ class Client(object):
             cols = ','.join(cols)
         url = self._url('items/csv', cols=cols, limit=limit)
         return self._json_resp(self._get(url), 'csv')
+
+    def account_export(self):
+        url = self._url('account/export')
+        return self._json_resp(self._post(url), 'job')
+
+    def get_job(self, job):
+        url = self._url('jobs/%s' % (obj_uuid(job),))
+        return self._json_resp(self._get(url), 'job')
