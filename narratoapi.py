@@ -245,12 +245,12 @@ class Client(object):
             'client_id': self.client_id
         })
 
-    def direct_login(self, username, password, scope='all'):
+    def direct_login(self, email, password, scope='all'):
         """Acquire a client token using OAuth login flow."""
         url = self._url('/oauth/access_token')
         js = self._json_resp(self._post(url, form={
             'grant_type': 'password',
-            'username': username,
+            'email': email,
             'password': password,
             'client_id': self.client_id,
             'scope': scope
@@ -430,18 +430,17 @@ class Client(object):
         resp = self._put_json(self._url('users/me/appdata'), data)
         return self._json_resp(resp, 'appdata')
 
-    def get_user(self, username='me'):
-        resp = self._get(self._url('users/%s' % (username,)))
+    def get_user(self, user_uuid='me'):
+        resp = self._get(self._url('users/%s' % (user_uuid,)))
         return self._json_resp(resp, 'user')
 
     def delete_appdata(self):
         self._delete(self._url('users/me/appdata'))
         return self._json_resp(resp, 'appdata')
 
-    def create_user(self, username, email, password):
+    def create_user(self, email, password):
         url = self._url('/oauth/createuser')
         resp = self._post(url, {
-            'username': username,
             'email': email,
             'password': password,
             'client_id': self.client_id,
@@ -464,7 +463,7 @@ class Client(object):
         return label
 
     def get_labels(self):
-        url = self._url('labels/')
+        url = self._url('labels')
         return self._json_resp(self._get(url), 'labels')
 
     def get_label(self, label):
@@ -480,10 +479,15 @@ class Client(object):
         return self._json_resp(self._patch(url, label, as_json=True), 'label')
 
     def add_label(self, **kwargs):
-        url = self._url('labels/')
+        url = self._url('labels')
         label = self._label_from_kwargs(**kwargs)
         self.LOG.debug('Adding label %r', label)
         resp = self._post(url, label, as_json=True)
+        return self._json_resp(resp, 'label')
+
+    def delete_label(self, label):
+        url = self._url('labels/%s' % (obj_uuid(label),))
+        resp = self._delete(url)
         return self._json_resp(resp, 'label')
 
     def get_label_items(self, label, include_deleted=False):
@@ -498,6 +502,11 @@ class Client(object):
 
     def deleted_item_ids(self, days=None, since_version=None):
         url = self._url('items/deleted',
+            days=days, since_version=since_version)
+        return self._json_resp(self._get(url), 'deletedids')
+
+    def deleted_label_ids(self, days=None, since_version=None):
+        url = self._url('labels/deleted',
             days=days, since_version=since_version)
         return self._json_resp(self._get(url), 'deletedids')
 
