@@ -318,12 +318,13 @@ class Client(object):
                         inclusive=inclusive)
         return self._json_resp(self._get(url), 'items')
 
-    def get_items(self, include_deleted=False, ann_key=None, obj_type=None,
+    def get_items(self, include_deleted=False, ann_key=None, obj_type=None, limit=None,
                   before_date=None, on_date=None, after_date=None, inclusive=False):
         url = self._url('items',
                         include_deleted=include_deleted,
                         ann_key=ann_key,
                         obj_type=obj_type,
+                        limit=limit,
                         before_date=before_date,
                         after_date=after_date,
                         on_date=on_date,
